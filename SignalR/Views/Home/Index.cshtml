@@ -1,0 +1,225 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Application</title>
+    <!-- External Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- SignalR Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <style>
+        /* General Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .dark-mode {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+
+        .chat-container {
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 1rem;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .dark-mode .chat-container {
+            background: #1e1e1e;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+            header h1 {
+                font-size: 1.5rem;
+                color: #555;
+            }
+
+        .dark-mode header h1 {
+            color: #e0e0e0;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+            .input-area input, .input-area button {
+                padding: 0.5rem;
+                font-size: 1rem;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                transition: background-color 0.3s ease, color 0.3s ease;
+            }
+
+            .input-area input {
+                flex: 1;
+            }
+
+            .input-area button {
+                background-color: #007bff;
+                color: #fff;
+                border: none;
+                cursor: pointer;
+            }
+
+                .input-area button:hover {
+                    background-color: #0056b3;
+                }
+
+        .dark-mode .input-area input {
+            background-color: #333;
+            color: #e0e0e0;
+            border: 1px solid #555;
+        }
+
+        .dark-mode .input-area button {
+            background-color: #0056b3;
+        }
+
+        .message-area {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            border-top: 1px solid #ddd;
+            padding-top: 0.5rem;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .dark-mode .message-area {
+            background-color: #333;
+            border-top: 1px solid #555;
+        }
+
+        .message-area li {
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .dark-mode .message-area li {
+            border-bottom: 1px solid #555;
+        }
+
+        .timestamp {
+            font-size: 0.85rem;
+            color: #888;
+            flex-shrink: 0;
+        }
+
+        .dark-mode .timestamp {
+            color: #aaa;
+        }
+
+        .message-content {
+            flex-grow: 1;
+        }
+
+        .dark-mode-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: background-color 0.3s ease;
+        }
+
+            .dark-mode-toggle img {
+                width: 24px;
+                height: 24px;
+            }
+
+        .dark-mode .dark-mode-toggle {
+            background-color: #333;
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Initialize SignalR connection
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/chat")
+                .build();
+
+            connection.start().catch(err => console.error(err.toString()));
+
+            const sendButton = document.getElementById("sendButton");
+            const usernameInput = document.getElementById("usernameInput");
+            const messageInput = document.getElementById("messageInput");
+            const discussion = document.getElementById("discussion");
+
+            sendButton.addEventListener("click", e => {
+                e.preventDefault(); // Prevent form submission
+                const user = usernameInput.value.trim();
+                const message = messageInput.value.trim();
+
+                if (user && message) {
+                    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    connection.invoke("SendMessage", user, `${timestamp}|||${message}`)
+                        .catch(err => console.error(err.toString()));
+                    messageInput.value = ""; // Clear input after sending
+                } else {
+                    alert("Please enter both a username and a message.");
+                }
+            });
+
+            connection.on("ReceiveMessage", (user, messageData) => {
+                const [time, message] = messageData.split("|||");
+                const li = document.createElement("li");
+                li.innerHTML = `
+                            <span class="timestamp">${time}</span>
+                            <span class="message-content"><strong>${user}</strong>: ${message}</span>
+                        `;
+                discussion.appendChild(li);
+            });
+
+            // Dark mode toggle functionality
+            const darkModeToggle = document.getElementById("darkModeToggle");
+            darkModeToggle.addEventListener("click", () => {
+                document.body.classList.toggle("dark-mode");
+            });
+        });
+    </script>
+</head>
+<body>
+    <button class="dark-mode-toggle" id="darkModeToggle">
+        <img src="https://cdn-icons-png.flaticon.com/512/1179/1179067.png" alt="Dark Mode Toggle" />
+    </button>
+    <div class="chat-container">
+        <header>
+            <h1>Chat Application</h1>
+        </header>
+        <main>
+            <!-- Input Area -->
+            <div class="input-area">
+                <input type="text" id="usernameInput" placeholder="Enter your username">
+                <input type="text" id="messageInput" placeholder="Type a message...">
+                <button id="sendButton">Send</button>
+            </div>
+
+            <!-- Messages -->
+            <ul id="discussion" class="message-area"></ul>
+        </main>
+    </div>
+</body>
+</html>
